@@ -108,7 +108,7 @@ def download():
     data = request.json
     source = data.get('source')
     track_id = data.get('id')
-    name = data.get('name')
+    name = data.get('name') or str(track_id) # 防止 name 为空导致 500
     artist = data.get('artist', 'Unknown')
     bitrate = data.get('br', 999) 
     download_lyric = data.get('lyric', False)

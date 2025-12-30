@@ -449,6 +449,8 @@
                             <option value="spotify">Spotify</option>
                             <option value="joox">Joox</option>
                             <option value="ytmusic">YouTube Music</option>
+                            <option value="migu">咪咕音乐</option>
+                            <option value="ximalaya">喜马拉雅</option>
                         </select>
                     </div>
 
@@ -512,7 +514,7 @@
             }
         });
 
-        async function performSearch(overrideQuery, page = 1) {
+        async function performSearch(overrideQuery, page = 1, overrideSource = null) {
             const query = overrideQuery || searchInput.value.trim();
             if (query !== currentQuery) {
                 currentPage = 1;
@@ -525,7 +527,7 @@
                 searchInput.value = overrideQuery;
             }
 
-            const source = sourceSelect.value;
+            const source = overrideSource || sourceSelect.value;
 
             if (!query) {
                 showToast('请输入关键词', 'error');
@@ -569,6 +571,13 @@
             performSearch(currentQuery, newPage);
         }
 
+        function searchAlbum(albumName) {
+            const currentSource = sourceSelect.value;
+            // 高级用法：source_album 可获取专辑曲目
+            const targetSource = currentSource + '_album';
+            performSearch(albumName, 1, targetSource);
+        }
+
         function renderResults(list) {
             if (list.length === 0) {
                 resultsContainer.innerHTML = '<div class="no-results">未找到结果。</div>';
@@ -580,6 +589,7 @@
                 const album = item.album || '';
                 const safeName = item.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                 const safeArtist = artists.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeAlbum = album.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
                 const coverUrl = `/api/cover?source=${sourceSelect.value}&id=${item.pic_id}`;
 
@@ -590,7 +600,7 @@
                             <div class="track-name" title="${safeName}">${item.name}</div>
                             <div class="track-meta">
                                 <span class="clickable" onclick="performSearch('${safeArtist}')">${artists}</span>
-                                ${album ? ` · <span class="clickable" onclick="performSearch('${album}')">${album}</span>` : ''}
+                                ${album ? ` · <span class="clickable" onclick="searchAlbum('${safeAlbum}')">${album}</span>` : ''}
                             </div>
                         </div>
                         <div class="download-wrapper">
