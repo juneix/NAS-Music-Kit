@@ -1,0 +1,83 @@
+name: 定时构建发布镜像
+
+# 触发条件配置
+on:
+  # 1. 也是最常用的：当代码推送到 main 分支时自动触发 (即"文件有变动就自动构建")
+  push:
+    branches: [ "main" ]
+    # 可以在这里排除不影响镜像构建的文件，避免无意义的构建
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+
+  # 2. 定时触发：每 24 小时触发一次 (UTC时间)
+  # 注意：即便是代码没变，定时触发也会构建，这有助于获取基础镜像(python:3.11-slim)的安全更新
+  schedule:
+    - cron: '0 0 * * *'
+
+  # 3. 手动触发：在 Actions 页面点击按钮构建
+  workflow_dispatch:
+
+env:
+  # 使用 GitHub 官方仓库 (ghcr.io)
+  REGISTRY: ghcr.io
+  # 镜像名称默认使用仓库名 (例如 user/repo)
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    # 设置权限，允许推送到 Packages
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # 第一步：拉取代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 第二步：设置 QEMU (关键！用于支持非本机架构如 arm64 的构建)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 第三步：设置 Docker Buildx (构建多架构镜像必须)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 第四步：登录镜像仓库
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          # GITHUB_TOKEN 是 GitHub 自动生成的，无需手动设置 Secrets
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 第五步：提取元数据 (自动处理 tags 和 labels)
+      # 它会自动生成 latest 标签，也会根据 git sha 生成版本号
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+
+      # 第六步：构建并推送
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          # 核心：在这里指定多架构
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # 利用缓存加快构建速度
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
