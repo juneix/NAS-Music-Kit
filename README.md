@@ -27,15 +27,19 @@ Docker Compose 配置文件，各种 NAS 系统可一键抄作业，同时支持
 ```
 services:
   nas-music-kit:
-    image: docker.1ms.run/ghcr.io/juneix/nas-music-kit #原版镜像请换成 ghcr.io/juneix/nas-music-kit
+    # 原版镜像请换成 ghcr.io/juneix/nas-music-kit
+    image: docker.1ms.run/ghcr.io/juneix/nas-music-kit
     container_name: nas-music-kit
     network_mode: host
     restart: unless-stopped
     environment:
       - PORT=8000 #自定义端口号
+      # 如需访问国际互联网，请配置以下内容并取消注释
       # - HTTP_PROXY=http://10.1.1.4:9110
       # - HTTPS_PROXY=http://10.1.1.4:9110
       # - NO_PROXY=172.17.0.1,127.0.0.1,localhost
     volumes:
+      # - /vol1/1000/music:/music # 飞牛示例
+      # - /volume1/music:/music # 群晖示例
       - ./music:/music #映射你的 NAS 音乐文件夹
 ```
