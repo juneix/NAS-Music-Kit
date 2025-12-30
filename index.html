@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAS 音乐助手</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f1115;
+            --card-bg: #1a1d24;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent: #6c5ce7;
+            --accent-hover: #5649c0;
+            --input-bg: #252830;
+            --border: #333640;
+            --success: #00b894;
+            --error: #d63031;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            flex: 1;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #a8a4e6, #6c5ce7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* 搜索框与选项区域 */
+        .search-area {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* 第一排：输入框和按钮 */
+        .search-row-main {
+            display: flex;
+            gap: 10px;
+        }
+
+        #search-input {
+            flex: 1;
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            padding: 12px 15px;
+            outline: none;
+            transition: border-color 0.2s;
+            min-width: 0;
+        }
+
+        #search-input:focus {
+            border-color: var(--accent);
+        }
+
+        #search-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        #search-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        #search-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        /* 第二排：选项 */
+        .search-row-options {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .option-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .option-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .select-input {
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            cursor: pointer;
+            outline: none;
+            width: 100%;
+        }
+
+        .select-input:focus {
+            border-color: var(--accent);
+        }
+
+        /* 结果列表 */
+        #results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .track-card {
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid transparent;
+            position: relative;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .track-card.downloading::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background: linear-gradient(90deg,
+                    rgba(108, 92, 231, 0.0) 0%,
+                    rgba(108, 92, 231, 0.2) 50%,
+                    rgba(108, 92, 231, 0.0) 100%);
+            background-size: 200% 100%;
+            animation: progress-slide 1.5s infinite linear;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @keyframes progress-slide {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .track-card:hover {
+            border-color: var(--border);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .cover-img {
+            width: 48px;
+            height: 48px;
+            border-radius: 4px;
+            object-fit: cover;
+            background: #252830;
+            flex-shrink: 0;
+        }
+
+        .track-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .track-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+
+        .track-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .clickable {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .clickable:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+
+        .download-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .icon-btn {
+            background: var(--input-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 1rem;
+            padding: 0;
+        }
+
+        .icon-btn:hover:not(:disabled) {
+            background: var(--border);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .icon-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .download-btn.done {
+            background: rgba(0, 184, 148, 0.1);
+            color: var(--success);
+            border-color: var(--success);
+            cursor: default;
+        }
+
+        .download-btn.failed {
+            background: rgba(214, 48, 49, 0.1);
+            color: var(--error);
+            border-color: var(--error);
+        }
+
+        .lyric-btn {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .page-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 加载动画 */
+        .hidden {
+            display: none !important;
+        }
+
+        #loading {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-top: 2rem;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .no-results {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 2rem;
+        }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        #toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        #toast.error {
+            border-left: 4px solid var(--error);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            padding-bottom: 2rem;
+        }
+
+        footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        footer a:hover {
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 600px) {
+            .search-row-options {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>NAS 音乐助手</h1>
+            <p>搜索高质量音乐，一键入库 NAS</p>
+        </header>
+
+        <main>
+            <!-- 搜索与设置区域 -->
+            <div class="search-area">
+                <!-- 第一排：搜索框 -->
+                <div class="search-row-main">
+                    <input type="text" id="search-input" placeholder="请输入歌名、歌手或专辑..." autocomplete="off">
+                    <button id="search-btn" onclick="performSearch()">搜索</button>
+                </div>
+
+                <!-- 第二排：选项 -->
+                <div class="search-row-options">
+                    <div class="option-group">
+                        <label class="option-label">音源</label>
+                        <select id="source-select" class="select-input">
+                            <option value="netease">网易云音乐 💎</option>
+                            <option value="tencent">QQ音乐 💎</option>
+                            <option value="qobuz">Qobuz 💎</option>
+                            <option value="kuwo">酷我音乐 ⭐️</option>
+                            <option value="tidal">Tidal ⭐️</option>
+                            <option value="apple">Apple Music</option>
+                            <option value="spotify">Spotify</option>
+                            <option value="joox">Joox</option>
+                            <option value="ytmusic">YouTube Music</option>
+                            <option value="migu">咪咕音乐</option>
+                            <option value="ximalaya">喜马拉雅</option>
+                        </select>
+                    </div>
+
+                    <div class="option-group">
+                        <label class="option-label">音质</label>
+                        <select id="quality-select" class="select-input">
+                            <option value="999" selected>无损 24bit 💎</option>
+                            <option value="740">无损 16bit ⭐️</option>
+                            <option value="320">高品质 320k</option>
+                            <option value="192">较高 192k</option>
+                            <option value="128">标准 128k</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="loading" class="hidden">
+                <div class="spinner"></div>
+                <p>正在搜索...</p>
+            </div>
+
+            <div id="results-container">
+                <!-- 结果将在这里显示 -->
+            </div>
+
+            <div id="pagination" class="pagination hidden">
+                <button class="page-btn" id="prev-btn" onclick="changePage(-1)">上一页</button>
+                <button class="page-btn" id="next-btn" onclick="changePage(1)">下一页</button>
+            </div>
+        </main>
+
+        <footer>
+            <p style="margin-bottom: 0.5rem; opacity: 0.7;">免责声明：本站资源来自网络，仅限本人学习参考，严禁下载、传播或商用，如侵权请与我联系删除。继续使用将视为同意本声明。
+            </p>
+            <p>Made with ❤️ by <a href="https://juneix.github.io" target="_blank">谢週五</a> ｜ Powered by <a
+                    href="https://music.gdstudio.org" target="_blank">GD音乐台</a></p>
+        </footer>
+    </div>
+
+    <div id="toast" class="hidden"></div>
+
+    <script>
+        const searchInput = document.getElementById('search-input');
+        const sourceSelect = document.getElementById('source-select');
+        const searchBtn = document.getElementById('search-btn');
+        const resultsContainer = document.getElementById('results-container');
+        const loading = document.getElementById('loading');
+        const toast = document.getElementById('toast');
+        const qualitySelect = document.getElementById('quality-select');
+
+        const pagination = document.getElementById('pagination');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+
+        let currentPage = 1;
+        let currentQuery = '';
+
+        searchInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        async function performSearch(overrideQuery, page = 1) {
+            const query = overrideQuery || searchInput.value.trim();
+            if (query !== currentQuery) {
+                currentPage = 1;
+            } else {
+                currentPage = page;
+            }
+            currentQuery = query;
+
+            if (overrideQuery) {
+                searchInput.value = overrideQuery;
+            }
+
+            const source = sourceSelect.value;
+
+            if (!query) {
+                showToast('请输入关键词', 'error');
+                return;
+            }
+
+            resultsContainer.innerHTML = '';
+            pagination.classList.add('hidden');
+            loading.classList.remove('hidden');
+            searchBtn.disabled = true;
+
+            try {
+                const res = await fetch(`/api/search?source=${source}&name=${encodeURIComponent(query)}&pages=${currentPage}`);
+                const data = await res.json();
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                } else if (Array.isArray(data)) {
+                    renderResults(data);
+
+                    if (data.length > 0) {
+                        pagination.classList.remove('hidden');
+                        prevBtn.disabled = (currentPage <= 1);
+                        nextBtn.disabled = (data.length < 20);
+                    }
+                } else {
+                    showToast('返回数据格式不正确', 'error');
+                }
+            } catch (err) {
+                showToast('请求失败，请检查网络', 'error');
+                console.error(err);
+            } finally {
+                loading.classList.add('hidden');
+                searchBtn.disabled = false;
+            }
+        }
+
+        function changePage(delta) {
+            const newPage = currentPage + delta;
+            if (newPage < 1) return;
+            performSearch(currentQuery, newPage);
+        }
+
+        function renderResults(list) {
+            if (list.length === 0) {
+                resultsContainer.innerHTML = '<div class="no-results">未找到结果。</div>';
+                return;
+            }
+
+            const listHtml = list.map(item => {
+                const artists = item.artist ? item.artist.join(', ') : 'Unknown';
+                const album = item.album || '';
+                const safeName = item.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                const safeArtist = artists.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+                const coverUrl = `/api/cover?source=${sourceSelect.value}&id=${item.pic_id}`;
+
+                return `
+                    <div class="track-card" id="card-${item.id}">
+                        <img src="${coverUrl}" class="cover-img" loading="lazy" onerror="this.style.opacity=0">
+                        <div class="track-info">
+                            <div class="track-name" title="${safeName}">${item.name}</div>
+                            <div class="track-meta">
+                                <span class="clickable" onclick="performSearch('${safeArtist}')">${artists}</span>
+                                ${album ? ` · <span class="clickable" onclick="performSearch('${album}')">${album}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="download-wrapper">
+                             <button class="icon-btn lyric-btn" title="仅下载歌词" onclick="downloadLogicOnly('${item.id}', '${item.source}', '${safeName}', '${safeArtist}', this)">
+                                词
+                            </button>
+                            <button class="icon-btn download-btn" title="下载音乐和歌词" onclick="startDownload('${item.id}', '${item.source}', '${safeName}', '${safeArtist}', this)">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            resultsContainer.innerHTML = listHtml;
+        }
+
+        async function downloadLogicOnly(id, source, name, artist, btn) {
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+
+            try {
+                const res = await fetch('/api/download_lyric', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source, id, name, artist })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    showToast(`歌词已保存: ${data.filename}`, 'success');
+                    btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00b894" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    btn.style.borderColor = 'var(--success)';
+                } else {
+                    showToast(data.error || '歌词下载失败', 'error');
+                }
+            } catch (err) {
+                showToast('网络请求错误', 'error');
+            } finally {
+                setTimeout(() => {
+                    if (!btn.innerHTML.includes('polyline')) {
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                    }
+                }, 2000);
+            }
+        }
+
+        async function startDownload(id, source, name, artist, btn) {
+            // 获取下拉框的音质
+            const br = qualitySelect.value;
+            // 歌词默认强制为 true
+            const lyric = true;
+
+            const card = document.getElementById(`card-${id}`);
+
+            btn.disabled = true;
+            card.classList.add('downloading');
+            card.classList.remove('failed');
+
+            try {
+                const res = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source, id, name, artist, br, lyric })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    showToast(`完成: ${data.filename}`, 'success');
+                    card.classList.remove('downloading');
+                    btn.classList.add('done');
+                    btn.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                } else {
+                    showToast(data.error || '下载失败', 'error');
+                    card.classList.remove('downloading');
+                    btn.disabled = false;
+                    btn.classList.add('failed');
+                    btn.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+                }
+            } catch (err) {
+                showToast('网络请求错误', 'error');
+                card.classList.remove('downloading');
+                btn.disabled = false;
+                btn.classList.add('failed');
+                btn.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+            }
+        }
+
+        function showToast(msg, type = 'info') {
+            toast.textContent = msg;
+            toast.className = `show ${type}`;
+            setTimeout(() => {
+                toast.className = 'hidden';
+            }, 3000);
+        }
+    </script>
+</body>
+
+</html>
