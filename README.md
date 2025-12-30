@@ -33,6 +33,9 @@ services:
     restart: unless-stopped
     environment:
       - PORT=8000 #自定义端口号
+      # - HTTP_PROXY=http://10.1.1.4:9110
+      # - HTTPS_PROXY=http://10.1.1.4:9110
+      # - NO_PROXY=172.17.0.1,127.0.0.1,localhost
     volumes:
       - ./music:/music #映射你的 NAS 音乐文件夹
 ```
